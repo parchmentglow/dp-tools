@@ -4,6 +4,8 @@
 // @version      2026-07-28
 // @description  Show/hide round column groups and/or tweak table to improve readability/width
 // @author       parchmentglow@github
+// @updateURL    https://raw.githubusercontent.com/parchmentglow/dp-tools/main/page-table-enhancer.user.js
+// @downloadURL  https://raw.githubusercontent.com/parchmentglow/dp-tools/main/page-table-enhancer.user.js
 // @match        https://www.pgdp.net/c/tools/project_manager/page_detail.php?project=*
 // @icon         data:image/gif;base64,R0lGODlhAQABAAAAACH5BAEKAAEALAAAAAABAAEAAAICTAEAOw==
 // @grant        GM_getValue
