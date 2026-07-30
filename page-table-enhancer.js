@@ -180,14 +180,6 @@ td.tm-round-f2 {
   background-color: color-mix(in srgb, var(--round-f2-color) 15%, transparent);
 }
 
-/* used to show and hide "details" */
-.tm-detail {
-    display: none;
-}
-.tm-detail-visible .tm-detail {
-    display: inline;
-}
-
 td.tm-role-user a, td.tm-role-diff a { /* captures user name and diff */
     font-weight: bold;
 }
@@ -237,7 +229,6 @@ td.tm-role-user span[title] { /* captures wordcheck symbols */
 
     const thatTable = document.getElementById("page_table");
     if (thatTable) { thatTable.style.visibility = "hidden"; } // prevent flashing of old table
-    unsafeWindow.tmstate = STATE; // debugging method for the console
     initialize();
 
     function initialize() {
@@ -246,8 +237,7 @@ td.tm-role-user span[title] { /* captures wordcheck symbols */
             STATE.table = table;
             buildModel();
             annotateCells();
-
-            // keep the detail style separate of styling yes/no (removes all CSS) for the 'detail' option
+            // keep the detail CSS separate of the styling option so not erased when "style" off
             const style = document.createElement("style");
             style.textContent = `.tm-detail { display: none; } .tm-detail-visible .tm-detail { display: inline; }`;
             document.head.appendChild(style);
@@ -296,7 +286,6 @@ td.tm-role-user span[title] { /* captures wordcheck symbols */
     // ================================================================
 
     function buildModel() {
-
         const table = STATE.table;
         const rows = table.rows;
         if (rows.length < 2) return;
@@ -491,7 +480,6 @@ td.tm-role-user span[title] { /* captures wordcheck symbols */
     // Style checkbox
     // ================================================================
     function createStyleCheckbox() {
-
         const label = document.createElement("label");
         label.style.whiteSpace = "nowrap";
         label.style.cursor = "pointer";
