@@ -1,0 +1,353 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>TOC to CSS Flexbox Converter</title>
+
+    <style>
+      body {
+        font-family: system-ui, sans-serif;
+        max-width: 1200px;
+        margin: 2rem auto;
+        padding: 0 1rem;
+        line-height: 1.4;
+      }
+
+      #preview {
+        border: 1px solid #999;
+        padding: 1.5rem;
+        min-height: 100px;
+      }
+
+      h1 {
+        font-size: 1.4rem;
+        margin-bottom: 0.5rem;
+      }
+
+      .help {
+        max-width: 70em;
+        margin-bottom: 1.5rem;
+        color: #666;
+        font-size: 0.9rem;
+      }
+
+      .panels {
+        display: grid;
+        grid-template-columns: 1fr 1fr;
+        gap: 1rem;
+      }
+
+      .panel {
+        display: flex;
+        flex-direction: column;
+      }
+
+      .panel.full-width {
+        grid-column: 1 / -1;
+      }
+
+      label {
+        font-weight: 600;
+        margin-bottom: 0.4rem;
+      }
+
+      textarea {
+        box-sizing: border-box;
+        width: 100%;
+        min-height: 420px;
+        padding: 0.75rem;
+        resize: vertical;
+        border: 1px solid #999;
+        border-radius: 4px;
+        font:
+          0.85rem/1.5 ui-monospace,
+          SFMono-Regular,
+          Consolas,
+          monospace;
+        tab-size: 2;
+      }
+
+      #cssOutput {
+        min-height: 260px;
+      }
+
+      input[type="text"] {
+        box-sizing: border-box;
+        width: 12em;
+        padding: 0.4rem;
+        margin-bottom: 0.5rem;
+        font:
+          0.9rem ui-monospace,
+          SFMono-Regular,
+          Consolas,
+          monospace;
+      }
+
+      .buttons {
+        display: flex;
+        gap: 0.5rem;
+        margin-top: 0.5rem;
+      }
+
+      button {
+        padding: 0.45rem 0.9rem;
+        cursor: pointer;
+      }
+
+      #convert {
+        background: #d9eaf7;
+      }
+
+      @media (max-width: 700px) {
+        .panels {
+          grid-template-columns: 1fr;
+        }
+
+        .panel.full-width {
+          grid-column: auto;
+        }
+      }
+    </style>
+  </head>
+
+  <body>
+    <h1>TOC to CSS Flexbox Converter</h1>
+
+    <p class="help">
+      Paste a plain-text table of contents. The final number on each line is treated as the page number, including Roman
+      numerals. If a line begins with a Roman numeral, optionally followed by a period, the numeral goes in column 1.
+      Lines following an entry that do not contain a page number are treated as a description paragraph belonging to the
+      above line with a CSS class that can be styled however you want.
+    </p>
+
+    <div class="panels">
+      <div class="panel">
+        <label for="input">Plain text (input)</label>
+
+        <textarea id="input" spellcheck="false"></textarea>
+
+        <label for="anchorPrefix">Page anchor prefix (default is "Page_")</label>
+
+        <input type="text" id="anchorPrefix" value="Page_" />
+
+        <div class="buttons">
+          <button type="button" id="convert" style="font-size: larger">Convert</button>
+        </div>
+      </div>
+
+      <div class="panel">
+        <label for="htmlOutput">HTML output</label>
+
+        <textarea id="htmlOutput" spellcheck="false" readonly></textarea>
+
+        <div class="buttons">
+          <button type="button" id="copyHtml">Copy HTML</button>
+        </div>
+      </div>
+
+      <div class="panel full-width">
+        <label for="cssOutput">CSS used (edit in your target software to suit)</label>
+
+        <textarea id="cssOutput" spellcheck="false" readonly></textarea>
+
+        <div class="buttons">
+          <button type="button" id="copyCss">Copy CSS</button>
+        </div>
+      </div>
+
+      <div class="panel full-width">
+        <label for="preview">Rendered preview</label>
+
+        <div id="preview"></div>
+      </div>
+    </div>
+
+    <script>
+const NUMBER_CSS = `
+
+.toc-number {
+flex: 0 0 2em;
+text-align: right;
+white-space: nowrap;
+}
+`;
+const FLEX_CSS = `.toc {
+margin: auto;
+max-width: 30em;
+list-style: none;
+padding: 0;
+line-height: 1.7em;
+}
+
+.toc-row {
+display: flex;
+}
+
+.toc-title {
+flex: 1;
+padding-left: 1em;
+}
+
+.toc-page {
+flex: 0 0 2em;
+text-align: right;
+white-space: nowrap;
+padding-left: 1em;
+}
+
+.toc-description {
+display: block;
+margin-left:1em;
+}`;
+(function() {
+  const input = document.getElementById("input");
+  const htmlOutput = document.getElementById("htmlOutput");
+  const cssOutput = document.getElementById("cssOutput");
+  const anchorPrefix = document.getElementById("anchorPrefix");
+  const preview = document.getElementById("preview");
+  const convertButton = document.getElementById("convert");
+  const copyHtmlButton = document.getElementById("copyHtml");
+  const copyCssButton = document.getElementById("copyCss");
+  const romanPattern = /^(M{0,4}(CM|CD|D?C{0,3})(XC|XL|L?X{0,3})(IX|IV|V?I{0,3}))\.?\s+(.+)$/i;
+  /^(M{0,4}(CM|CD|D?C{0,3})(XC|XL|L?X{0,3})(IX|IV|V?I{0,3}))$/i;
+
+  function escapeHtml(text) {
+    return text.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;").replace(/"/g, "&quot;").replace(/'/g, "&#39;");
+  }
+
+  function convert() {
+    const prefix = anchorPrefix.value;
+    const lines = input.value.split(/\r?\n/);
+    const entries = [];
+    let current = null;
+    let pendingTitle = null;
+    for (const rawLine of lines) {
+      const line = rawLine.trim();
+      if (line === "") {
+        continue;
+      }
+      let pageMatch = line.match(/(?:^|\s)(\d+|[IVXLCDM]+)\s*$/i);
+      if (pageMatch && !/^\d+$/.test(pageMatch[1]) && !romanPagePattern.test(pageMatch[1])) {
+        pageMatch = null;
+      }
+      const beforePage = pageMatch ? line.substring(0, pageMatch.index).trim() : line;
+      const romanMatch = beforePage.match(romanPattern);
+      // A line beginning with a Roman numeral starts a new major entry.
+      if (romanMatch) {
+        if (current) {
+          entries.push(current);
+          current = null;
+        }
+        pendingTitle = [beforePage];
+        // The page number is already present, so finish the entry now.
+        if (pageMatch) {
+          let roman = romanMatch[1].toUpperCase();
+          if (/^[IVXLCDM]+\./i.test(beforePage)) {
+            roman += ".";
+          }
+          current = {
+            roman: roman,
+            title: romanMatch[5].trim(),
+            page: pageMatch[1],
+            description: []
+          };
+          pendingTitle = null;
+        }
+        continue;
+      }
+      // We are collecting a multiline title.
+      if (pendingTitle) {
+        if (pageMatch) {
+          pendingTitle.push(beforePage);
+          const fullTitle = pendingTitle.join(" ");
+          const fullRomanMatch = fullTitle.match(romanPattern);
+          let roman = "";
+          let title = fullTitle;
+          if (fullRomanMatch) {
+            roman = fullRomanMatch[1].toUpperCase();
+            if (/^[IVXLCDM]+\./i.test(fullTitle)) {
+              roman += ".";
+            }
+            title = fullRomanMatch[5].trim();
+          }
+          current = {
+            roman: roman,
+            title: title,
+            page: pageMatch[1],
+            description: []
+          };
+          pendingTitle = null;
+        }
+        else {
+          pendingTitle.push(line);
+        }
+        continue;
+      }
+      // Any page-numbered line starts a new entry.
+      if (pageMatch) {
+        if (current) {
+          entries.push(current);
+        }
+        current = {
+          roman: "",
+          title: beforePage,
+          page: pageMatch[1],
+          description: []
+        };
+        continue;
+      }
+      // Otherwise, a non-numbered line after an entry is its description.
+      if (current) {
+        current.description.push(line);
+      }
+    }
+    if (current) {
+      entries.push(current);
+    }
+    const hasNumbers = entries.some(entry => entry.roman !== "");
+    const rows = [];
+    for (const entry of entries) {
+      const title = entry.title + (entry.description.length ? '<span class="toc-description">' + entry.description.join(" ") + '</span>' : '');
+      if (hasNumbers) {
+        rows.push(['   <li class="toc-row">', '        <span class="toc-number">' + entry.roman + '</span>', '        <span class="toc-title">' + title + '</span>', '        <span class="toc-page">' + '<a href="#' + escapeHtml(prefix) + escapeHtml(entry.page.toLowerCase()) + '">' + entry.page + '</a>' + '</span>', '    </li>'].join("\n"));
+      }
+      else {
+        rows.push(['    <div class="toc-row">', '        <span class="toc-title">' + title + '</span>', '        <span class="toc-page">' + '<a href="#' + escapeHtml(prefix) + escapeHtml(entry.page.toLowerCase()) + '">' + entry.page + '</a>' + '</span>', '    </div>'].join("\n"));
+      }
+    }
+    const html = `<nav data-epub-type="toc">
+<ul class="toc">
+${rows.join("\n")}
+</ul>
+</nav>`;
+    const css = hasNumbers ? FLEX_CSS + NUMBER_CSS : FLEX_CSS;
+    htmlOutput.value = html;
+    cssOutput.value = css;
+    preview.innerHTML = '<style>' + css + '</style>' + html;
+  }
+  async function copyText(textarea, button, label) {
+    try {
+      await navigator.clipboard.writeText(textarea.value);
+    }
+    catch (error) {
+      textarea.select();
+      document.execCommand("copy");
+    }
+    button.textContent = "Copied!";
+    setTimeout(function() {
+      button.textContent = label;
+    }, 1200);
+  }
+  convertButton.addEventListener("click", convert);
+  copyHtmlButton.addEventListener("click", function() {
+    copyText(htmlOutput, copyHtmlButton, "Copy HTML");
+  });
+  copyCssButton.addEventListener("click", function() {
+    copyText(cssOutput, copyCssButton, "Copy CSS");
+  });
+})();
+
+    </script>
+  </body>
+</html>
