@@ -12,12 +12,24 @@
         margin: 2rem auto;
         padding: 0 1rem;
         line-height: 1.4;
+		background: #333;
+		color: #ddd;
       }
 
+      textarea {
+	    background: #aaa;
+		color: #000;
+	  }
+
+	  #input, input, #preview {
+	  background: #ddd;
+	  color: #000;
+	  }
+	  
       #preview {
         border: 1px solid #999;
         padding: 1.5rem;
-        min-height: 100px;
+		max-width: 30em;
       }
 
       h1 {
@@ -28,24 +40,23 @@
       .help {
         max-width: 70em;
         margin-bottom: 1.5rem;
-        color: #666;
         font-size: 0.9rem;
       }
 
-      .panels {
-        display: grid;
-        grid-template-columns: 1fr 1fr;
-        gap: 1rem;
-      }
+.panels {
+  display: grid;
+  grid-template-columns: 1fr 1fr 1fr;
+  gap: 1rem;
+}
 
-      .panel {
-        display: flex;
-        flex-direction: column;
-      }
+.panel {
+  display: flex;
+  flex-direction: column;
+}
 
-      .panel.full-width {
-        grid-column: 1 / -1;
-      }
+.panel.full-width {
+  grid-column: 1 / -1;
+}
 
       label {
         font-weight: 600;
@@ -68,9 +79,6 @@
         tab-size: 2;
       }
 
-      #cssOutput {
-        min-height: 260px;
-      }
 
       input[type="text"] {
         box-sizing: border-box;
@@ -96,7 +104,8 @@
       }
 
       #convert {
-        background: #d9eaf7;
+        background: darkblue; 
+		color: white;
       }
 
       @media (max-width: 700px) {
@@ -115,15 +124,62 @@
     <h1>TOC to CSS Flexbox Converter</h1>
 
     <p class="help">
-      Paste a plain-text table of contents. The final number on each line is treated as the page number, including Roman
-      numerals. If a line begins with a Roman numeral, optionally followed by a period, the numeral goes in column 1.
-      Lines following an entry that do not contain a page number are treated as a description paragraph belonging to the
-      above line with a CSS class that can be styled however you want.
+      Paste a plain-text table of contents and press "Convert" to make an HTML
+      version that uses an unordered list and flex display. View "Details" below
+	  to see an example of the layout required. Departures from this layout may not be handled well. Roman numerals are recognized. Blank spaces before page numbers are not required. HTML tags stay in the output but don't show in the preview.
+	  
+	  <details>
+	   <summary>Example TOC</summary>
+	  <pre id="example" style="border:1px solid gray; padding:0.5em;">
+<sc>Introduction By the
+Author's Friend</sc> i	  
+
+<sc>Preface</sc>      xxxiv
+	  
+I <sc>The Solar System</sc>      1
+
+Optional descriptive text
+with blank lines
+around it.
+
+II <sc>The Sun</sc> 8
+
+III <sc>Mercury</sc> 25
+
+Mercury and Venus have just such phases,
+for the same reason. There is this difference
+however. When the Moon is at "full" &lt;i&gt;we&lt;/i&gt; are
+between it and the Sun; when Mercury or Venus
+show "full" the Sun is between us and them.
+
+Currently, this second paragraph of
+description will not show as a <b>separate</b> paragraph.
+
+VIII <sc>The Asteroids</sc>      57
+
+XV <sc>Chapter titles that use
+more than one line
+are handled properly</sc> 106
+
+XVI <sc>The Rest of the Book</sc>      113
+
+<sc>Appendices 🤔</sc> 550
+
+Index      600
+	  </pre>
+	  <button onclick="
+    document.getElementById('input').value =
+      document.getElementById('example').innerText;
+  " style="margin:0.5em;">
+    Use this example
+  </button>
+
+	  </details>
     </p>
 
     <div class="panels">
       <div class="panel">
-        <label for="input">Plain text (input)</label>
+        <label for="input">Plain text<br>input</label>
 
         <textarea id="input" spellcheck="false"></textarea>
 
@@ -132,12 +188,18 @@
         <input type="text" id="anchorPrefix" value="Page_" />
 
         <div class="buttons">
-          <button type="button" id="convert" style="font-size: larger">Convert</button>
+          <button type="button" id="convert" style="font-size: larger">Convert</button><br>
+		  <button onclick="
+  document.querySelectorAll('.panels textarea').forEach(t => t.value = '');
+  document.getElementById('preview').innerHTML = '';">
+  Clear Everything
+</button>
+
         </div>
       </div>
 
       <div class="panel">
-        <label for="htmlOutput">HTML output</label>
+        <label for="htmlOutput">HTML<br> output</label>
 
         <textarea id="htmlOutput" spellcheck="false" readonly></textarea>
 
@@ -146,8 +208,8 @@
         </div>
       </div>
 
-      <div class="panel full-width">
-        <label for="cssOutput">CSS used (edit in your target software to suit)</label>
+      <div class="panel">
+        <label for="cssOutput">CSS<br>[never changes; edit in your target software]</label>
 
         <textarea id="cssOutput" spellcheck="false" readonly></textarea>
 
@@ -157,7 +219,7 @@
       </div>
 
       <div class="panel full-width">
-        <label for="preview">Rendered preview</label>
+        <label for="preview">HTML preview</label>
 
         <div id="preview"></div>
       </div>
@@ -177,11 +239,12 @@ margin: auto;
 max-width: 30em;
 list-style: none;
 padding: 0;
-line-height: 1.7em;
+line-height: 1.5em;
 }
 
 .toc-row {
 display: flex;
+padding-bottom:1em;
 }
 
 .toc-title {
@@ -198,7 +261,8 @@ padding-left: 1em;
 
 .toc-description {
 display: block;
-margin-left:1em;
+margin-top: 0.5em;
+margin-left: 1em;
 }`;
 (function() {
   const input = document.getElementById("input");
@@ -210,101 +274,106 @@ margin-left:1em;
   const copyHtmlButton = document.getElementById("copyHtml");
   const copyCssButton = document.getElementById("copyCss");
   const romanPattern = /^(M{0,4}(CM|CD|D?C{0,3})(XC|XL|L?X{0,3})(IX|IV|V?I{0,3}))\.?\s+(.+)$/i;
-  const romanPagePattern = /^(M{0,4}(CM|CD|D?C{0,3})(XC|XL|L?X{0,3})(IX|IV|V?I{0,3}))$/i;
-
+  const romanPagePattern =
+    /^(M{0,4}(CM|CD|D?C{0,3})(XC|XL|L?X{0,3})(IX|IV|V?I{0,3}))$/i;
+  
   function escapeHtml(text) {
     return text.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;").replace(/"/g, "&quot;").replace(/'/g, "&#39;");
   }
 
   function convert() {
     const prefix = anchorPrefix.value;
-    const lines = input.value.split(/\r?\n/);
-    const entries = [];
-    let current = null;
-    let pendingTitle = null;
-    for (const rawLine of lines) {
-      const line = rawLine.trim();
-      if (line === "") {
+const lines = input.value.split(/\r?\n/);
+const blocks = [];
+let block = [];
+
+for (const rawLine of lines) {
+
+    const line = rawLine.trim();
+
+    if (line === "") {
+
+        if (block.length) {
+            blocks.push(block);
+            block = [];
+        }
+
         continue;
-      }
-      let pageMatch = line.match(/(?:^|\s)(\d+|[IVXLCDM]+)\s*$/i);
-      if (pageMatch && !/^\d+$/.test(pageMatch[1]) && !romanPagePattern.test(pageMatch[1])) {
+    }
+
+    block.push(line);
+}
+
+if (block.length) {
+    blocks.push(block);
+}
+
+const entries = [];
+let current = null;
+
+for (const block of blocks) {
+
+    const lastLine = block[block.length - 1];
+
+    let pageMatch =
+        lastLine.match(/(?:^|\s)(\d+|[IVXLCDM]+)\s*$/i);
+
+    if (pageMatch &&
+        !/^\d+$/.test(pageMatch[1]) &&
+        !romanPagePattern.test(pageMatch[1])) {
         pageMatch = null;
-      }
-      const beforePage = pageMatch ? line.substring(0, pageMatch.index).trim() : line;
-      const romanMatch = beforePage.match(romanPattern);
-      // A line beginning with a Roman numeral starts a new major entry.
-      if (romanMatch) {
-        if (current) {
-          entries.push(current);
-          current = null;
+    }
+
+    if (pageMatch) {
+
+        const beforePage =
+            lastLine.substring(0, pageMatch.index).trim();
+
+        const titleLines = block.slice(0, -1);
+
+        if (beforePage) {
+            titleLines.push(beforePage);
         }
-        pendingTitle = [beforePage];
-        // The page number is already present, so finish the entry now.
-        if (pageMatch) {
-          let roman = romanMatch[1].toUpperCase();
-          if (/^[IVXLCDM]+\./i.test(beforePage)) {
-            roman += ".";
-          }
-          current = {
-            roman: roman,
-            title: romanMatch[5].trim(),
-            page: pageMatch[1],
-            description: []
-          };
-          pendingTitle = null;
-        }
-        continue;
-      }
-      // We are collecting a multiline title.
-      if (pendingTitle) {
-        if (pageMatch) {
-          pendingTitle.push(beforePage);
-          const fullTitle = pendingTitle.join(" ");
-          const fullRomanMatch = fullTitle.match(romanPattern);
-          let roman = "";
-          let title = fullTitle;
-          if (fullRomanMatch) {
-            roman = fullRomanMatch[1].toUpperCase();
+
+        const fullTitle = titleLines.join(" ");
+
+        let roman = "";
+        let title = fullTitle;
+
+        const romanMatch =
+            fullTitle.match(romanPattern);
+
+        if (romanMatch) {
+
+            roman = romanMatch[1].toUpperCase();
+
             if (/^[IVXLCDM]+\./i.test(fullTitle)) {
-              roman += ".";
+                roman += ".";
             }
-            title = fullRomanMatch[5].trim();
-          }
-          current = {
+
+            title = romanMatch[5].trim();
+        }
+
+        if (current) {
+            entries.push(current);
+        }
+
+        current = {
             roman: roman,
             title: title,
             page: pageMatch[1],
             description: []
-          };
-          pendingTitle = null;
-        }
-        else {
-          pendingTitle.push(line);
-        }
-        continue;
-      }
-      // Any page-numbered line starts a new entry.
-      if (pageMatch) {
-        if (current) {
-          entries.push(current);
-        }
-        current = {
-          roman: "",
-          title: beforePage,
-          page: pageMatch[1],
-          description: []
         };
-        continue;
-      }
-      // Otherwise, a non-numbered line after an entry is its description.
-      if (current) {
-        current.description.push(line);
-      }
+
+    } else if (current) {
+
+        current.description.push(block.join(" "));
     }
-    if (current) {
-      entries.push(current);
-    }
+}
+
+if (current) {
+    entries.push(current);
+}
     const hasNumbers = entries.some(entry => entry.roman !== "");
     const rows = [];
     for (const entry of entries) {
