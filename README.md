@@ -1,4 +1,4 @@
-**1. Flex layout from plaintext TOC** is a [self-contained HTML file](https://parchmentglow.github.io/dp-tools/Flex%20layout%20from%20plaintext%20TOC.html) that converts certain plaintext tables of contents to HTML using a flex layout. This recently became an accessibility recommendation at DP.
+**1. [Flex layout from plaintext TOC](https://parchmentglow.github.io/dp-tools/Flex%20layout%20from%20plaintext%20TOC.html)** is a self-contained HTML page that converts certain plaintext tables of contents to HTML using a flex layout. This recently became an accessibility recommendation at DP.
 
 ----
 
@@ -17,7 +17,9 @@
 
 <figure>
   <img src="https://github.com/parchmentglow/dp-tools/blob/main/images/page-table-after-light.jpg?raw=true" width="800">
- <caption>Appearance of page tables with script. Slightly dated version.</caption>
+ <caption>Appearance of page tables in 'detail' mode (e.g. no information is hidden here). Slightly dated version.</caption>
 </figure>
 
+----
 
+**3. [HTML Number Offset Tool](https://parchmentglow.github.io/dp-tools/HTML%20Number%20Offset%20Tool.html)** will adjust targetted numbers up or down in HMTL code.
