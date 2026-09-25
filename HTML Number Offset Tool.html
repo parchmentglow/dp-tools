@@ -1,0 +1,318 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<title>HTML Number Offset Tool</title>
+
+<style>
+body {
+    font-family: sans-serif;
+    margin: 20px;
+    background: #f4f4f4;
+}
+
+textarea {
+    width: 100%;
+    height: 240px;
+    font-family: monospace;
+    font-size: 14px;
+    margin-bottom: 1em;
+    padding: 10px;
+    box-sizing: border-box;
+}
+
+input[type="text"],
+input[type="number"] {
+    padding: 6px;
+    margin-right: 10px;
+    margin-bottom: 10px;
+}
+
+button {
+    padding: 8px 14px;
+    margin-right: 10px;
+    cursor: pointer;
+}
+
+.disabled {
+    opacity: 0.5;
+}
+</style>
+</head>
+
+<body>
+
+<h2>HTML Number Offset Tool</h2>
+
+<details>
+  <summary style="margin-bottom:1em; font-weight:bold;">Instructions</summary>
+ <ul>
+<li>This tool will increase or decrease all specified numbers in the HTML input. Leading zeroes are retained. Negative offsets are possible, and will never output a number less than 1.</li>
+
+<li>Enter one of: the HTML tags, tag <em>contents</em>, or attributes you want to modify. Separate more than one element with spaces ("div span"). Or, use plain text mode to change <em>all</em> numbers. Or, use a regex containing "\d+" to match certain things.</li>
+
+<li>"Tag contents" are the visible text output of HTML, e.g. index page numbers. Only the first "parent" HTML tag with a number will be affected. In [div][a]123[/a][/div], the number will change only if "a" is specified, not "div".</li>
+
+<li>Limitations: 1) The tool is meant for integers, and does not take into consideration commas and decimal points. Each of the three numbers in "123,456.789" will be changed. 2) Roman numerals are not affected. 3) Careful about pasting an entire HTML document in—tags like html, head, and body are currently dropped in "Tag contents" mode.</li>
+
+<li>It is strongly recommended to compare the before and after text <a href="https://www.diffchecker.com/">with a diff</a>.</li>
+</ul>
+
+</details>
+<div>
+
+    <label>
+        Attributes:
+        <input type="text" id="attrs" placeholder="href class">
+    </label>
+	
+    <label>
+        <em>or</em> Tags:
+        <input type="text" id="tags" placeholder="div span a">
+    </label>
+
+    <label>
+        <em>or</em> Tag contents (beta):
+        <input type="text" id="contentTags" placeholder="p td">
+    </label>
+
+    <br><br>
+
+    <label>
+        <input type="checkbox" id="plainTextMode">
+        <em>or</em> Plain text mode (change <em>every</em> number)
+    </label>
+
+    <label style="padding-left:4em;">
+        <em>or</em> Regex pattern with \d+ (beta):
+        <input type="text" id="regexInput" placeholder="--File: \d+\.png--">
+    </label>
+
+    <br><br>
+    <label>
+        Number offset (+ or −):
+        <input type="number" id="offset" value="0">
+    </label>
+
+    <br><br>
+
+    <button onclick="processText()">Process</button>
+    <button onclick="copyOutput()">Copy Output</button>
+
+</div>
+
+<h3>Input HTML</h3>
+<textarea id="input"></textarea>
+
+<h3>Output HTML</h3>
+<textarea id="output" readonly></textarea>
+
+<script>
+
+const tagsInput = document.getElementById("tags");
+const attrsInput = document.getElementById("attrs");
+const contentInput = document.getElementById("contentTags");
+const regexInput = document.getElementById("regexInput");
+const plainTextModeBox = document.getElementById("plainTextMode");
+
+regexInput.addEventListener("focus", () => {
+
+if (regexInput.value.trim() === "") {
+    regexInput.value = regexInput.placeholder;
+}
+});
+
+function clamp(n) {
+    return n < 1 ? 1 : n;
+}
+
+function shiftNumber(str, offset) {
+    const width = str.length;
+    const n = clamp(parseInt(str, 10) + offset);
+    return String(n).padStart(width, "0");
+}
+
+// enforce only one active mode input group
+function clearOthers(active) {
+
+    const all = [tagsInput, attrsInput, contentInput, regexInput];
+
+    if (plainTextModeBox.checked) return;
+
+    all.forEach(el => {
+
+        if (el !== active) {
+            el.value = "";
+            el.classList.add("disabled");
+        } else {
+            el.classList.remove("disabled");
+        }
+    });
+
+    if (!active.value.trim()) {
+        all.forEach(el => el.classList.remove("disabled"));
+    }
+}
+
+tagsInput.addEventListener("input", () => clearOthers(tagsInput));
+attrsInput.addEventListener("input", () => clearOthers(attrsInput));
+contentInput.addEventListener("input", () => clearOthers(contentInput));
+regexInput.addEventListener("input", () => clearOthers(regexInput));
+
+function updateModeState() {
+
+    const isPlain = plainTextModeBox.checked;
+    const fields = [tagsInput, attrsInput, contentInput, regexInput];
+
+    fields.forEach(el => {
+
+        if (isPlain) {
+            el.value = "";
+            el.disabled = true;
+            el.classList.add("disabled");
+        } else {
+            el.disabled = false;
+            el.classList.remove("disabled");
+        }
+    });
+}
+
+plainTextModeBox.addEventListener("change", updateModeState);
+updateModeState();
+
+function processText() {
+
+    const input = document.getElementById("input").value;
+    const offset = parseInt(document.getElementById("offset").value, 10) || 0;
+
+    const plainTextMode = plainTextModeBox.checked;
+
+    const tags = tagsInput.value.trim().split(/\s+/).filter(Boolean);
+    const attrs = attrsInput.value.trim().split(/\s+/).filter(Boolean);
+    const contentTags = contentInput.value.trim().split(/\s+/).filter(Boolean);
+    const regexPattern = regexInput.value.trim();
+
+    // -------------------------
+    // PLAIN TEXT MODE
+    // -------------------------
+    if (plainTextMode) {
+
+        const output = input.replace(/\d+/g, num => {
+            return shiftNumber(num, offset);
+        });
+
+        document.getElementById("output").value = output;
+        return;
+    }
+
+    let output = input;
+
+    // -------------------------
+    // REGEX MODE
+    // -------------------------
+    if (regexPattern.length > 0) {
+
+        const safePattern = regexPattern.replace(/\\d\+/g, "\\d+");
+        const regex = new RegExp(safePattern, "g");
+
+        output = input.replace(regex, (match) => {
+            return match.replace(/\d+/g, num => {
+                return shiftNumber(num, offset);
+            });
+        });
+    }
+
+    // -------------------------
+    // TAG MODE
+    // -------------------------
+    else if (tags.length > 0) {
+
+        const tagRegex = new RegExp(`<(${tags.join("|")})([^>]*)>`, "gi");
+
+        output = input.replace(tagRegex, (m, tag, attrsStr) => {
+
+            const newAttrs = attrsStr.replace(/\d+/g, num => {
+                return shiftNumber(num, offset);
+            });
+
+            return `<${tag}${newAttrs}>`;
+        });
+    }
+
+    // -------------------------
+    // ATTRIBUTE MODE
+    // -------------------------
+    else if (attrs.length > 0) {
+
+        const attrRegex = new RegExp(`(${attrs.join("|")})="([^"]*?)"`, "gi");
+
+        output = input.replace(attrRegex, (m, name, value) => {
+
+            const newValue = value.replace(/\d+/g, num => {
+                return shiftNumber(num, offset);
+            });
+
+            return `${name}="${newValue}"`;
+        });
+    }
+
+    // -------------------------
+    // CONTENT MODE
+    // -------------------------
+    else if (contentTags.length > 0) {
+
+        const template = document.createElement("template");
+        template.innerHTML = input;
+
+        const allowed = new Set(contentTags);
+
+        const walker = document.createTreeWalker(
+            template.content,
+            NodeFilter.SHOW_TEXT,
+            null
+        );
+
+        let node;
+
+        while (node = walker.nextNode()) {
+
+            let el = node.parentElement;
+            let ok = false;
+
+            while (el) {
+                if (allowed.has(el.tagName?.toLowerCase())) {
+                    ok = true;
+                    break;
+                }
+                el = el.parentElement;
+            }
+
+            if (!ok) continue;
+
+            node.nodeValue = node.nodeValue.replace(/\d+/g, num => {
+                return shiftNumber(num, offset);
+            });
+        }
+
+        output = template.innerHTML;
+    }
+
+    document.getElementById("output").value = output;
+}
+
+async function copyOutput() {
+
+    const text = document.getElementById("output").value;
+
+    try {
+        await navigator.clipboard.writeText(text);
+        alert("Copied.");
+    } catch (err) {
+        alert("Copy failed.");
+    }
+}
+
+</script>
+
+</body>
+</html>
