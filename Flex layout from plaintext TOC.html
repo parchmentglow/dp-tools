@@ -382,7 +382,7 @@ if (current) {
         rows.push(['   <li class="toc-row">', '        <span class="toc-number">' + entry.roman + '</span>', '        <span class="toc-title">' + title + '</span>', '        <span class="toc-page">' + '<a href="#' + escapeHtml(prefix) + escapeHtml(entry.page.toLowerCase()) + '">' + entry.page + '</a>' + '</span>', '    </li>'].join("\n"));
       }
       else {
-        rows.push(['    <div class="toc-row">', '        <span class="toc-title">' + title + '</span>', '        <span class="toc-page">' + '<a href="#' + escapeHtml(prefix) + escapeHtml(entry.page.toLowerCase()) + '">' + entry.page + '</a>' + '</span>', '    </div>'].join("\n"));
+        rows.push(['    <li class="toc-row">', '        <span class="toc-title">' + title + '</span>', '        <span class="toc-page">' + '<a href="#' + escapeHtml(prefix) + escapeHtml(entry.page.toLowerCase()) + '">' + entry.page + '</a>' + '</span>', '    </li>'].join("\n"));
       }
     }
     const html = `<nav data-epub-type="toc">
