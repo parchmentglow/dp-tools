@@ -229,17 +229,17 @@ Index      600
 const NUMBER_CSS = `
 
 .toc-number {
-flex: 0 0 2em;
+flex: 0 0 1.5em;
 text-align: right;
 white-space: nowrap;
 }
 `;
-const FLEX_CSS = `.toc {
+const FLEX_CSS = `
+.toc {
 margin: auto;
 max-width: 30em;
 list-style: none;
 padding: 0;
-line-height: 1.5em;
 }
 
 .toc-row {
@@ -252,18 +252,20 @@ flex: 1;
 padding-left: 1em;
 }
 
+.toc-description {
+display: block;
+margin-top: 0.5em;
+margin-left: 1em;
+}
+
 .toc-page {
 flex: 0 0 2em;
 text-align: right;
 white-space: nowrap;
 padding-left: 1em;
+align-self: flex-end;
 }
-
-.toc-description {
-display: block;
-margin-top: 0.5em;
-margin-left: 1em;
-}`;
+`;
 (function() {
   const input = document.getElementById("input");
   const htmlOutput = document.getElementById("htmlOutput");
@@ -273,7 +275,7 @@ margin-left: 1em;
   const convertButton = document.getElementById("convert");
   const copyHtmlButton = document.getElementById("copyHtml");
   const copyCssButton = document.getElementById("copyCss");
-  const romanPattern = /^(M{0,4}(CM|CD|D?C{0,3})(XC|XL|L?X{0,3})(IX|IV|V?I{0,3}))\.?\s+(.+)$/i;
+  const romanPattern = /^((?:<sc>)?M{0,4}(CM|CD|D?C{0,3})(XC|XL|L?X{0,3})(IX|IV|V?I{0,3})(?:<\/sc>)?[:.]?(?:<\/sc>)?)\s+(.+)$/i;
   const romanPagePattern =
     /^(M{0,4}(CM|CD|D?C{0,3})(XC|XL|L?X{0,3})(IX|IV|V?I{0,3}))$/i;
   
@@ -345,12 +347,9 @@ for (const block of blocks) {
 
         if (romanMatch) {
 
-            roman = romanMatch[1].toUpperCase();
+            roman = romanMatch[1];
 
-            if (/^[IVXLCDM]+\./i.test(fullTitle)) {
-                roman += ".";
-            }
-
+            
             title = romanMatch[5].trim();
         }
 
